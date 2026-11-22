@@ -33,9 +33,14 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The default package list includes "tools", which newer SDK
+          # repositories no longer publish -- it makes the action fail during
+          # its own setup, before any of our steps run.
+          packages: ''
 
       - name: Install SDK platform 36
-        run: sdkmanager "platforms;android-36"
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
       - name: Cache Gradle packages
         uses: actions/cache@v4
