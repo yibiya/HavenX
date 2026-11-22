@@ -65,5 +65,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: HavenX-debug
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: warn
+          # The app has an `abi` flavour dimension (arm64 / x64), so AGP writes
+          # to app/build/outputs/apk/<flavor>/debug/ as well as the flat debug/.
+          # A recursive glob picks up whichever layout the AGP version uses.
+          path: |
+            app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
