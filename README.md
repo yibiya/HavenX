@@ -52,6 +52,8 @@ Original copyright and license notices are retained. This fork includes addition
 
 ## Features
 
+**Adaptive glass interface** — Theme-aware translucent navigation and grouped Settings panels with subtle borders and Material touch feedback; no live blur or continuous rendering effects. All six destinations remain accessible: phones use a rounded bottom shell, widths of 600dp and above use a labeled rail, and widths of 1000dp and above use a wider sidebar. Settings switches to two columns at 840dp and caps content width for readability. Tablet mode responds automatically to available window width, including split-screen. Desktop fullscreen hides all navigation; terminal output retains its own opaque colors and input behavior.
+
 **Terminal** — VT100/xterm emulator with multi-tab sessions, [Mosh](https://mosh.org) (Mobile Shell) for roaming connections and [Eternal Terminal](https://eternalterminal.dev) (ET) for persistent sessions — both with pure Kotlin protocol implementations (no native binaries), tmux/zellij/screen auto-attach, mouse mode for TUI apps, configurable keyboard toolbar (Esc, Tab, Ctrl, Alt, AltGr, arrows with key repeat), text selection with copy and Open URL, configurable font size, and six color schemes.
 
 **Desktop (VNC)** — Remote desktop viewer with RFB 3.8 protocol support. Pinch-to-zoom, two-finger pan and scroll, single-finger drag for window management, soft keyboard with X11 KeySym mapping. Fullscreen mode with NoMachine-style corner hotspot for session controls. Connect directly or tunnel through SSH. Supports Raw, CopyRect, RRE, Hextile, and ZLib encodings.

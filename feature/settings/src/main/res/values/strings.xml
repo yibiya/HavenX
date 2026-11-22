@@ -78,4 +78,9 @@
     <string name="snippet_name">Snippet Name</string>
     <string name="command_content">Command Content</string>
     <string name="auto_append_enter">Auto append Enter</string>
+    <string name="settings_section_security">Security &amp; Privacy</string>
+    <string name="settings_section_terminal">Terminal &amp; Input</string>
+    <string name="settings_section_appearance">Appearance &amp; Language</string>
+    <string name="settings_section_backup">Backup &amp; Restore</string>
+    <string name="settings_section_about">About &amp; Updates</string>
 </resources>

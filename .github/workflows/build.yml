@@ -71,3 +71,10 @@ jobs:
           path: |
             app/build/outputs/apk/**/*.apk
           if-no-files-found: error
+
+      - name: Upload arm64 debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: HavenX-arm64-debug
+          path: app/build/outputs/apk/arm64/debug/*.apk
+          if-no-files-found: error

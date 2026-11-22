@@ -16,6 +16,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import sh.haven.core.ui.theme.GlassPanel
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -105,7 +112,7 @@ import sh.haven.core.data.preferences.ToolbarLayout
 import sh.haven.core.data.preferences.UserPreferencesRepository
 import java.util.UUID
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
@@ -175,121 +182,136 @@ fun SettingsScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(title = { Text(stringResource(R.string.settings)) })
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val sectionWidth = if (maxWidth >= 840.dp) (minOf(maxWidth, 1120.dp) - 48.dp) / 2 else minOf(maxWidth - 32.dp, 680.dp)
+            FlowRow(
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                maxItemsInEachRow = 2,
+            ) {
+                if (viewModel.biometricAvailable) {
+                    SettingsSection(stringResource(R.string.settings_section_security), Modifier.width(sectionWidth)) {
+                        SettingsToggleItem(
+                            icon = Icons.Filled.Fingerprint,
+                            title = stringResource(R.string.biometric_unlock),
+                            subtitle = stringResource(R.string.require_biometrics_to_open_havenx),
+                            checked = biometricEnabled,
+                            onCheckedChange = viewModel::setBiometricEnabled,
+                        )
+                        if (biometricEnabled) {
+                            SettingsItem(
+                                icon = Icons.Filled.Timer,
+                                title = stringResource(R.string.lock_timeout),
+                                subtitle = lockTimeoutLabel(lockTimeout, zh),
+                                onClick = { showLockTimeoutDialog = true },
+                            )
+                        }
+                    }
+                }
+                SettingsSection(stringResource(R.string.settings_section_terminal), Modifier.width(sectionWidth)) {
+                    SettingsItem(
+                        icon = Icons.Filled.Terminal,
+                        title = stringResource(R.string.session_persistence),
+                        subtitle = if (sessionManager == UserPreferencesRepository.SessionManager.NONE) {
+                            stringResource(R.string.none)
+                        } else {
+                            sessionManager.label
+                        },
+                        onClick = { showSessionManagerDialog = true },
+                    )
+                    SettingsItem(
+                        icon = Icons.Filled.TextFields,
+                        title = stringResource(R.string.terminal_font_size),
+                        subtitle = "${fontSize}sp",
+                        onClick = { showFontSizeDialog = true },
+                    )
+                    SettingsItem(
+                        icon = Icons.Filled.FontDownload,
+                        title = if (zh) "终端字体" else "Terminal Font",
+                        subtitle = terminalFont.label,
+                        onClick = { showFontDialog = true },
+                    )
+                    SettingsItem(
+                        icon = Icons.Filled.Palette,
+                        title = stringResource(R.string.terminal_color_scheme),
+                        subtitle = colorSchemeLabel(colorScheme, zh),
+                        onClick = { showColorSchemeDialog = true },
+                    )
+                    SettingsItem(
+                        icon = Icons.Filled.KeyboardAlt,
+                        title = stringResource(R.string.keyboard_toolbar),
+                        subtitle = stringResource(R.string.configure_toolbar_keys_and_layout),
+                        onClick = { showToolbarConfigDialog = true },
+                    )
+                    SettingsItem(
+                        icon = Icons.Filled.KeyboardAlt,
+                        title = stringResource(R.string.combo_keys_and_snippets),
+                        subtitle = stringResource(R.string.configure_combo_keys_and_snippets),
+                        onClick = { showComboKeysDialog = true },
+                    )
+                }
+                SettingsSection(stringResource(R.string.settings_section_appearance), Modifier.width(sectionWidth)) {
+                    SettingsItem(
+                        icon = Icons.Filled.ColorLens,
+                        title = stringResource(R.string.theme),
+                        subtitle = themeModeLabel(theme, zh),
+                        onClick = { showThemeDialog = true },
+                    )
+                    SettingsItem(
+                        icon = Icons.Filled.Language,
+                        title = stringResource(R.string.language),
+                        subtitle = when (languageMode) {
+                            UserPreferencesRepository.LanguageMode.SYSTEM -> stringResource(R.string.system_default)
+                            UserPreferencesRepository.LanguageMode.ENGLISH -> "English"
+                            UserPreferencesRepository.LanguageMode.CHINESE_SIMPLIFIED -> "简体中文"
+                        },
+                        onClick = { showLanguageDialog = true },
+                    )
 
-        if (viewModel.biometricAvailable) {
-            SettingsToggleItem(
-                icon = Icons.Filled.Fingerprint,
-                title = stringResource(R.string.biometric_unlock),
-                subtitle = stringResource(R.string.require_biometrics_to_open_havenx),
-                checked = biometricEnabled,
-                onCheckedChange = viewModel::setBiometricEnabled,
-            )
-            if (biometricEnabled) {
-                SettingsItem(
-                    icon = Icons.Filled.Timer,
-                    title = stringResource(R.string.lock_timeout),
-                    subtitle = lockTimeoutLabel(lockTimeout, zh),
-                    onClick = { showLockTimeoutDialog = true },
-                )
-            }
-        }
-        SettingsItem(
-            icon = Icons.Filled.Terminal,
-            title = stringResource(R.string.session_persistence),
-            subtitle = if (sessionManager == UserPreferencesRepository.SessionManager.NONE) {
-                stringResource(R.string.none)
-            } else {
-                sessionManager.label
-            },
-            onClick = { showSessionManagerDialog = true },
-        )
-        SettingsItem(
-            icon = Icons.Filled.TextFields,
-            title = stringResource(R.string.terminal_font_size),
-            subtitle = "${fontSize}sp",
-            onClick = { showFontSizeDialog = true },
-        )
-        SettingsItem(
-            icon = Icons.Filled.FontDownload,
-            title = if (zh) "终端字体" else "Terminal Font",
-            subtitle = terminalFont.label,
-            onClick = { showFontDialog = true },
-        )
-        SettingsItem(
-            icon = Icons.Filled.Palette,
-            title = stringResource(R.string.terminal_color_scheme),
-            subtitle = colorSchemeLabel(colorScheme, zh),
-            onClick = { showColorSchemeDialog = true },
-        )
-        SettingsItem(
-            icon = Icons.Filled.KeyboardAlt,
-            title = stringResource(R.string.keyboard_toolbar),
-            subtitle = stringResource(R.string.configure_toolbar_keys_and_layout),
-            onClick = { showToolbarConfigDialog = true },
-        )
-        SettingsItem(
-            icon = Icons.Filled.KeyboardAlt,
-            title = stringResource(R.string.combo_keys_and_snippets),
-            subtitle = stringResource(R.string.configure_combo_keys_and_snippets),
-            onClick = { showComboKeysDialog = true },
-        )
-        SettingsItem(
-            icon = Icons.Filled.ColorLens,
-            title = stringResource(R.string.theme),
-            subtitle = themeModeLabel(theme, zh),
-            onClick = { showThemeDialog = true },
-        )
-        SettingsItem(
-            icon = Icons.Filled.Language,
-            title = stringResource(R.string.language),
-            subtitle = when (languageMode) {
-                UserPreferencesRepository.LanguageMode.SYSTEM -> stringResource(R.string.system_default)
-                UserPreferencesRepository.LanguageMode.ENGLISH -> "English"
-                UserPreferencesRepository.LanguageMode.CHINESE_SIMPLIFIED -> "简体中文"
-            },
-            onClick = { showLanguageDialog = true },
-        )
+                }
+                SettingsSection(stringResource(R.string.settings_section_backup), Modifier.width(sectionWidth)) {
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    SettingsItem(
+                        icon = Icons.Filled.CloudUpload,
+                        title = stringResource(R.string.export_backup),
+                        subtitle = stringResource(R.string.keys_connections_and_settings),
+                        onClick = {
+                            showBackupPasswordDialog = BackupAction.Export
+                        },
+                    )
+                    SettingsItem(
+                        icon = Icons.Filled.CloudDownload,
+                        title = stringResource(R.string.restore_backup),
+                        subtitle = stringResource(R.string.import_from_a_backup_file),
+                        onClick = {
+                            importLauncher.launch(arrayOf("*/*"))
+                        },
+                    )
 
-        SettingsItem(
-            icon = Icons.Filled.CloudUpload,
-            title = stringResource(R.string.export_backup),
-            subtitle = stringResource(R.string.keys_connections_and_settings),
-            onClick = {
-                showBackupPasswordDialog = BackupAction.Export
-            },
-        )
-        SettingsItem(
-            icon = Icons.Filled.CloudDownload,
-            title = stringResource(R.string.restore_backup),
-            subtitle = stringResource(R.string.import_from_a_backup_file),
-            onClick = {
-                importLauncher.launch(arrayOf("*/*"))
-            },
-        )
+                    if (backupStatus is SettingsViewModel.BackupStatus.InProgress) {
+                        ListItem(
+                            headlineContent = { Text(stringResource(R.string.working)) },
+                            leadingContent = {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                            },
+                            modifier = Modifier.padding(horizontal = 8.dp),
+                        )
+                    }
 
-        if (backupStatus is SettingsViewModel.BackupStatus.InProgress) {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.working)) },
-                leadingContent = {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                },
-                modifier = Modifier.padding(horizontal = 8.dp),
-            )
-        }
+                }
+                SettingsSection(stringResource(R.string.settings_section_about), Modifier.width(sectionWidth)) {
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    SettingsItem(
+                        icon = Icons.Filled.Info,
+                        title = stringResource(R.string.about_havenx),
+                        subtitle = "v${packageInfo.versionName}",
+                        onClick = { showAboutDialog = true },
+                    )
 
-        SettingsItem(
-            icon = Icons.Filled.Info,
-            title = stringResource(R.string.about_havenx),
-            subtitle = "v${packageInfo.versionName}",
-            onClick = { showAboutDialog = true },
-        )
-
-    } // scrollable Column
+                }
+            } // adaptive sections
+        } // width constraints
     } // outer Column
 
     LaunchedEffect(updateState) {
@@ -1116,6 +1138,21 @@ private fun SelectableDialogRow(
 }
 
 @Composable
+private fun SettingsSection(title: String, modifier: Modifier, content: @Composable () -> Unit) {
+    Column(modifier) {
+        Text(
+            title,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 16.dp, bottom = 8.dp).semantics { heading() },
+        )
+        GlassPanel(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(vertical = 4.dp)) { content() }
+        }
+    }
+}
+
+@Composable
 private fun SettingsToggleItem(
     icon: ImageVector,
     title: String,
@@ -1124,6 +1161,7 @@ private fun SettingsToggleItem(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     ListItem(
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         headlineContent = { Text(title) },
         supportingContent = { Text(subtitle) },
         leadingContent = {
@@ -1146,8 +1184,13 @@ private fun SettingsItem(
     onClick: () -> Unit = {},
 ) {
     ListItem(
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         headlineContent = { Text(title) },
         supportingContent = { Text(subtitle) },
+        trailingContent = {
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        },
         leadingContent = {
             Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         },

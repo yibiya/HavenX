@@ -87,5 +87,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: app/build/outputs/apk/*/debug/haven-*-debug.apk
+          path: app/build/outputs/apk/*/debug/havenx-*-debug.apk
+          if-no-files-found: error
           retention-days: 7

@@ -1,6 +1,7 @@
 package com.hension.havenx
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.hension.havenx.navigation.Screen
 
@@ -16,11 +17,9 @@ class ScreenTest {
     }
 
     @Test
-    fun `all screens have non-blank labels`() {
+    fun `all screens provide localized label resources`() {
         Screen.entries.forEach { screen ->
-            assert(screen.label.isNotBlank()) {
-                "Screen ${screen.name} has blank label"
-            }
+            assertTrue("Screen ${screen.name} has no label resource", screen.labelRes != 0)
         }
     }
 

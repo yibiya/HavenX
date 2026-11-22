@@ -1,6 +1,24 @@
 package com.hension.havenx.navigation
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import sh.haven.core.ui.theme.GlassPanel
+import sh.haven.core.ui.theme.glassSurface
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.exclude
@@ -30,6 +48,8 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import sh.haven.core.data.preferences.UserPreferencesRepository
@@ -83,166 +103,206 @@ fun HavenNavHost(
     // Desktop fullscreen hides bottom nav and system bars
     var desktopFullscreen by remember { mutableStateOf(false) }
 
-    Scaffold(
-        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.exclude(WindowInsets.ime),
-        bottomBar = {
-            if (!desktopFullscreen) {
-                NavigationBar {
-                    screens.forEachIndexed { index, screen ->
-                        val label = stringResource(screen.labelRes)
-                        NavigationBarItem(
-                            icon = { Icon(screen.icon, contentDescription = label) },
-                            label = { Text(label) },
-                            selected = pagerState.currentPage == index,
-                            onClick = {
-                                coroutineScope.launch {
-                                    pagerState.animateScrollToPage(index)
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val tablet = maxWidth >= 600.dp
+        val expanded = maxWidth >= 1000.dp
+        Scaffold(
+            contentWindowInsets = ScaffoldDefaults.contentWindowInsets.exclude(WindowInsets.ime),
+            bottomBar = {
+                if (!desktopFullscreen && !tablet) {
+                    NavigationBar(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).glassSurface(),
+                        containerColor = Color.Transparent,
+                        tonalElevation = 0.dp,
+                    ) {
+                        screens.forEachIndexed { index, screen ->
+                            val label = stringResource(screen.labelRes)
+                            NavigationBarItem(
+                                icon = { Icon(screen.icon, contentDescription = label) },
+                                label = { Text(label) },
+                                colors = NavigationBarItemDefaults.colors(
+                                    indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                                ),
+                                selected = pagerState.currentPage == index,
+                                onClick = {
+                                    coroutineScope.launch {
+                                        pagerState.animateScrollToPage(index)
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
-        }
-    ) { innerPadding ->
-        HorizontalPager(
-            state = pagerState,
-            userScrollEnabled = pagerState.currentPage != Screen.Terminal.ordinal,
-            modifier = Modifier
-                .padding(innerPadding)
-                .consumeWindowInsets(innerPadding)
-                .imePadding(),
-        ) { page ->
-            when (screens[page]) {
-                Screen.Connections -> ConnectionsScreen(
-                    onNavigateToTerminal = { profileId ->
-                        pendingTerminalProfileId = profileId
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(Screen.Terminal.ordinal)
-                        }
-                    },
-                    onNavigateToNewSession = { profileId ->
-                        pendingNewSessionProfileId = profileId
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(Screen.Terminal.ordinal)
-                        }
-                    },
-                    onNavigateToVnc = { host, port, password ->
-                        pendingVncHost = host
-                        pendingVncPort = port
-                        pendingVncPassword = password
-                        pendingVncSshForward = false
-                        pendingVncSshSessionId = null
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(Screen.Desktop.ordinal)
-                        }
-                    },
-                    onNavigateToRdp = { host, port, username, password, domain, sshForward, sshProfileId, sshSessionId ->
-                        pendingRdpHost = host
-                        pendingRdpPort = port
-                        pendingRdpUsername = username
-                        pendingRdpPassword = password
-                        pendingRdpDomain = domain
-                        pendingRdpSshForward = sshForward
-                        pendingRdpSshProfileId = sshProfileId
-                        pendingRdpSshSessionId = sshSessionId
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(Screen.Desktop.ordinal)
-                        }
-                    },
-                    onNavigateToSmb = { profileId ->
-                        pendingSmbProfileId = profileId
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(Screen.Sftp.ordinal)
-                        }
-                    },
-                )
-                Screen.Terminal -> {
-                    TerminalScreen(
-                        navigateToProfileId = pendingTerminalProfileId,
-                        newSessionProfileId = pendingNewSessionProfileId,
-                        isActive = pagerState.settledPage == Screen.Terminal.ordinal,
-                        fontSize = terminalFontSize,
-                        toolbarLayout = toolbarLayout,
-                        onNavigateToConnections = {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(Screen.Connections.ordinal)
+        ) { innerPadding ->
+            Row(Modifier.fillMaxSize().padding(innerPadding).consumeWindowInsets(innerPadding).imePadding()) {
+                if (tablet && !desktopFullscreen) {
+                    GlassPanel(Modifier.padding(8.dp).width(if (expanded) 220.dp else 104.dp)) {
+                        Column(
+                            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            screens.forEachIndexed { index, screen ->
+                                val label = stringResource(screen.labelRes)
+                                TextButton(
+                                    onClick = { coroutineScope.launch { pagerState.animateScrollToPage(index) } },
+                                    modifier = Modifier.padding(horizontal = 8.dp).fillMaxWidth()
+                                        .glassSurface(selected = pagerState.currentPage == index)
+                                        .semantics { selected = pagerState.currentPage == index },
+                                ) {
+                                    if (expanded) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                            Icon(screen.icon, contentDescription = null, modifier = Modifier.size(24.dp))
+                                            Text(label, modifier = Modifier.weight(1f))
+                                        }
+                                    } else {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Icon(screen.icon, contentDescription = null)
+                                            Text(label, style = MaterialTheme.typography.labelSmall)
+                                        }
+                                    }
+                                }
                             }
-                        },
-                        onNavigateToVnc = { host, port, password, sshForward, sshSessionId ->
-                            pendingVncHost = host
-                            pendingVncPort = port
-                            pendingVncPassword = password
-                            pendingVncSshForward = sshForward
-                            pendingVncSshSessionId = sshSessionId
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(Screen.Desktop.ordinal)
+                        }
+                    }
+                }
+                HorizontalPager(
+                    state = pagerState,
+                    userScrollEnabled = pagerState.currentPage != Screen.Terminal.ordinal,
+                    modifier = Modifier.weight(1f).fillMaxSize(),
+                ) { page ->
+                    when (screens[page]) {
+                        Screen.Connections -> ConnectionsScreen(
+                            onNavigateToTerminal = { profileId ->
+                                pendingTerminalProfileId = profileId
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(Screen.Terminal.ordinal)
+                                }
+                            },
+                            onNavigateToNewSession = { profileId ->
+                                pendingNewSessionProfileId = profileId
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(Screen.Terminal.ordinal)
+                                }
+                            },
+                            onNavigateToVnc = { host, port, password ->
+                                pendingVncHost = host
+                                pendingVncPort = port
+                                pendingVncPassword = password
+                                pendingVncSshForward = false
+                                pendingVncSshSessionId = null
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(Screen.Desktop.ordinal)
+                                }
+                            },
+                            onNavigateToRdp = { host, port, username, password, domain, sshForward, sshProfileId, sshSessionId ->
+                                pendingRdpHost = host
+                                pendingRdpPort = port
+                                pendingRdpUsername = username
+                                pendingRdpPassword = password
+                                pendingRdpDomain = domain
+                                pendingRdpSshForward = sshForward
+                                pendingRdpSshProfileId = sshProfileId
+                                pendingRdpSshSessionId = sshSessionId
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(Screen.Desktop.ordinal)
+                                }
+                            },
+                            onNavigateToSmb = { profileId ->
+                                pendingSmbProfileId = profileId
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(Screen.Sftp.ordinal)
+                                }
+                            },
+                        )
+                        Screen.Terminal -> {
+                            TerminalScreen(
+                                navigateToProfileId = pendingTerminalProfileId,
+                                newSessionProfileId = pendingNewSessionProfileId,
+                                isActive = pagerState.settledPage == Screen.Terminal.ordinal,
+                                fontSize = terminalFontSize,
+                                toolbarLayout = toolbarLayout,
+                                onNavigateToConnections = {
+                                    coroutineScope.launch {
+                                        pagerState.animateScrollToPage(Screen.Connections.ordinal)
+                                    }
+                                },
+                                onNavigateToVnc = { host, port, password, sshForward, sshSessionId ->
+                                    pendingVncHost = host
+                                    pendingVncPort = port
+                                    pendingVncPassword = password
+                                    pendingVncSshForward = sshForward
+                                    pendingVncSshSessionId = sshSessionId
+                                    coroutineScope.launch {
+                                        pagerState.animateScrollToPage(Screen.Desktop.ordinal)
+                                    }
+                                },
+                                onSelectionActiveChanged = { terminalSelectionActive = it },
+                                terminalModifier = if (terminalSelectionActive) Modifier
+                                    else Modifier.pagerSwipeOverride(pagerState, coroutineScope),
+                            )
+                            LaunchedEffect(pendingTerminalProfileId) {
+                                if (pendingTerminalProfileId != null) {
+                                    pendingTerminalProfileId = null
+                                }
                             }
-                        },
-                        onSelectionActiveChanged = { terminalSelectionActive = it },
-                        terminalModifier = if (terminalSelectionActive) Modifier
-                            else Modifier.pagerSwipeOverride(pagerState, coroutineScope),
-                    )
-                    LaunchedEffect(pendingTerminalProfileId) {
-                        if (pendingTerminalProfileId != null) {
-                            pendingTerminalProfileId = null
+                            LaunchedEffect(pendingNewSessionProfileId) {
+                                if (pendingNewSessionProfileId != null) {
+                                    pendingNewSessionProfileId = null
+                                }
+                            }
                         }
-                    }
-                    LaunchedEffect(pendingNewSessionProfileId) {
-                        if (pendingNewSessionProfileId != null) {
-                            pendingNewSessionProfileId = null
+                        Screen.Desktop -> {
+                            val consumePending = {
+                                pendingVncHost = null
+                                pendingVncPort = null
+                                pendingVncPassword = null
+                                pendingVncSshForward = false
+                                pendingVncSshSessionId = null
+                                pendingRdpHost = null
+                                pendingRdpPort = null
+                                pendingRdpUsername = null
+                                pendingRdpPassword = null
+                                pendingRdpDomain = null
+                                pendingRdpSshForward = false
+                                pendingRdpSshSessionId = null
+                                pendingRdpSshProfileId = null
+                            }
+                            DesktopScreen(
+                                isActive = pagerState.settledPage == Screen.Desktop.ordinal,
+                                pendingVncHost = pendingVncHost,
+                                pendingVncPort = pendingVncPort,
+                                pendingVncPassword = pendingVncPassword,
+                                pendingVncSshForward = pendingVncSshForward,
+                                pendingVncSshSessionId = pendingVncSshSessionId,
+                                pendingRdpHost = pendingRdpHost,
+                                pendingRdpPort = pendingRdpPort,
+                                pendingRdpUsername = pendingRdpUsername,
+                                pendingRdpPassword = pendingRdpPassword,
+                                pendingRdpDomain = pendingRdpDomain,
+                                pendingRdpSshForward = pendingRdpSshForward,
+                                pendingRdpSshSessionId = pendingRdpSshSessionId,
+                                pendingRdpSshProfileId = pendingRdpSshProfileId,
+                                toolbarLayout = toolbarLayout,
+                                onPendingConsumed = consumePending,
+                                onFullscreenChanged = { desktopFullscreen = it },
+                            )
                         }
+                        Screen.Sftp -> {
+                            SftpScreen(
+                                pendingSmbProfileId = pendingSmbProfileId,
+                                isActive = pagerState.currentPage == Screen.Sftp.ordinal,
+                            )
+                            LaunchedEffect(pendingSmbProfileId) {
+                                if (pendingSmbProfileId != null) {
+                                    pendingSmbProfileId = null
+                                }
+                            }
+                        }
+                        Screen.Keys -> KeysScreen()
+                        Screen.Settings -> SettingsScreen()
                     }
                 }
-                Screen.Desktop -> {
-                    val consumePending = {
-                        pendingVncHost = null
-                        pendingVncPort = null
-                        pendingVncPassword = null
-                        pendingVncSshForward = false
-                        pendingVncSshSessionId = null
-                        pendingRdpHost = null
-                        pendingRdpPort = null
-                        pendingRdpUsername = null
-                        pendingRdpPassword = null
-                        pendingRdpDomain = null
-                        pendingRdpSshForward = false
-                        pendingRdpSshSessionId = null
-                        pendingRdpSshProfileId = null
-                    }
-                    DesktopScreen(
-                        isActive = pagerState.settledPage == Screen.Desktop.ordinal,
-                        pendingVncHost = pendingVncHost,
-                        pendingVncPort = pendingVncPort,
-                        pendingVncPassword = pendingVncPassword,
-                        pendingVncSshForward = pendingVncSshForward,
-                        pendingVncSshSessionId = pendingVncSshSessionId,
-                        pendingRdpHost = pendingRdpHost,
-                        pendingRdpPort = pendingRdpPort,
-                        pendingRdpUsername = pendingRdpUsername,
-                        pendingRdpPassword = pendingRdpPassword,
-                        pendingRdpDomain = pendingRdpDomain,
-                        pendingRdpSshForward = pendingRdpSshForward,
-                        pendingRdpSshSessionId = pendingRdpSshSessionId,
-                        pendingRdpSshProfileId = pendingRdpSshProfileId,
-                        toolbarLayout = toolbarLayout,
-                        onPendingConsumed = consumePending,
-                        onFullscreenChanged = { desktopFullscreen = it },
-                    )
-                }
-                Screen.Sftp -> {
-                    SftpScreen(
-                        pendingSmbProfileId = pendingSmbProfileId,
-                        isActive = pagerState.currentPage == Screen.Sftp.ordinal,
-                    )
-                    LaunchedEffect(pendingSmbProfileId) {
-                        if (pendingSmbProfileId != null) {
-                            pendingSmbProfileId = null
-                        }
-                    }
-                }
-                Screen.Keys -> KeysScreen()
-                Screen.Settings -> SettingsScreen()
             }
         }
     }
