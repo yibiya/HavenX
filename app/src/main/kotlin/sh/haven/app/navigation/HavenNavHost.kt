@@ -48,6 +48,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import kotlinx.coroutines.CoroutineScope
@@ -119,7 +120,7 @@ fun HavenNavHost(
                             val label = stringResource(screen.labelRes)
                             NavigationBarItem(
                                 icon = { Icon(screen.icon, contentDescription = label) },
-                                label = { Text(label) },
+                                label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                                 colors = NavigationBarItemDefaults.colors(
                                     indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
                                 ),
