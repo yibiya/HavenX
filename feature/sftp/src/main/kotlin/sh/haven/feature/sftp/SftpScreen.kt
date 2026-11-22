@@ -406,6 +406,7 @@ fun SftpScreen(
     }
 
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             Surface(shadowElevation = 2.dp) {
                 Column(

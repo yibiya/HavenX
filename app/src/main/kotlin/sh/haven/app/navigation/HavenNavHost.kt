@@ -1,6 +1,7 @@
 package com.hension.havenx.navigation
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,8 +17,10 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import sh.haven.core.ui.theme.GlassPanel
+import sh.haven.core.ui.theme.glassBackdrop
 import sh.haven.core.ui.theme.glassSurface
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -104,10 +107,11 @@ fun HavenNavHost(
     // Desktop fullscreen hides bottom nav and system bars
     var desktopFullscreen by remember { mutableStateOf(false) }
 
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize().glassBackdrop()) {
         val tablet = maxWidth >= 600.dp
         val expanded = maxWidth >= 1000.dp
         Scaffold(
+            containerColor = Color.Transparent,
             contentWindowInsets = ScaffoldDefaults.contentWindowInsets.exclude(WindowInsets.ime),
             bottomBar = {
                 if (!desktopFullscreen && !tablet) {
@@ -171,7 +175,10 @@ fun HavenNavHost(
                     state = pagerState,
                     userScrollEnabled = pagerState.currentPage != Screen.Terminal.ordinal,
                     modifier = Modifier.weight(1f).fillMaxSize(),
+                    key = { screens[it] },
                 ) { page ->
+                    // Move a retained display list during swipes, not each screen's drawing tree.
+                    Box(Modifier.fillMaxSize().graphicsLayer()) {
                     when (screens[page]) {
                         Screen.Connections -> ConnectionsScreen(
                             onNavigateToTerminal = { profileId ->
@@ -303,6 +310,7 @@ fun HavenNavHost(
                         Screen.Keys -> KeysScreen()
                         Screen.Settings -> SettingsScreen()
                     }
+                    }
                 }
             }
         }
@@ -320,6 +328,7 @@ private fun Modifier.pagerSwipeOverride(
     val touchSlopPx = viewConfiguration.touchSlop
     awaitEachGesture {
         awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        val startPage = pagerState.currentPage
         var totalX = 0f
         var totalY = 0f
         var decided = false
@@ -346,9 +355,9 @@ private fun Modifier.pagerSwipeOverride(
         if (isHorizontal) {
             val threshold = size.width / 4
             val target = when {
-                totalX < -threshold -> pagerState.currentPage + 1
-                totalX > threshold -> pagerState.currentPage - 1
-                else -> pagerState.currentPage
+                totalX < -threshold -> startPage + 1
+                totalX > threshold -> startPage - 1
+                else -> startPage
             }.coerceIn(0, pagerState.pageCount - 1)
             scope.launch { pagerState.animateScrollToPage(target) }
         }

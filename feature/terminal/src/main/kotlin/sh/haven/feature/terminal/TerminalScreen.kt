@@ -329,14 +329,18 @@ fun TerminalScreen(
                     // the View hierarchy, bypassing termlib's hardcoded US QWERTY
                     // symbol table.
                     val currentSelectionActive by rememberUpdatedState(selectionActive)
-                    DisposableEffect(activeTab) {
+                    val currentIsActive by rememberUpdatedState(isActive)
+                    DisposableEffect(activeTab, isActive) {
                         val interceptor = { event: android.view.KeyEvent ->
-                            handleLayoutAwareKeyEvent(
+                            currentIsActive && handleLayoutAwareKeyEvent(
                                 event, activeTab,
                                 currentSelectionActive, viewModel,
                             )
                         }
-                        KeyEventInterceptor.handler = interceptor
+                        // Retained offscreen pages must not own Activity key dispatch.
+                        if (isActive) {
+                            KeyEventInterceptor.handler = interceptor
+                        }
                         onDispose {
                             if (KeyEventInterceptor.handler === interceptor) {
                                 KeyEventInterceptor.handler = null
@@ -400,7 +404,7 @@ fun TerminalScreen(
                                 modifier = Modifier.fillMaxSize(),
                                 initialFontSize = fontSize.sp,
                                 typeface = terminalTypeface,
-                                keyboardEnabled = true,
+                                keyboardEnabled = isActive,
                                 showSoftKeyboard = isActive && manuallyRequestedKeyboard,
                                 backgroundColor = Color(colorScheme.background),
                                 foregroundColor = Color(colorScheme.foreground),

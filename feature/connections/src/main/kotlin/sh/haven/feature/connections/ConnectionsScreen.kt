@@ -494,6 +494,7 @@ fun ConnectionsScreen(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(title = { Text(stringResource(R.string.connections)) })
         },
