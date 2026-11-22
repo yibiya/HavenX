@@ -103,18 +103,17 @@ class SftpTransferManager @Inject constructor(
                     var current = task.transferredBytes
                     val throttle = ProgressThrottle { bytes ->
                         updateTask(task.id) { t -> t.copy(transferredBytes = bytes) }
+                        this@withContext.isActive
                     }
                     try {
                         if (isAppend && current > 0) {
                             client.downloadRange(entry.path, current, task.totalBytes - current, out) {
                                 current += it
                                 throttle.report(current)
-                                this@withContext.isActive
                             }
                         } else {
                             client.download(entry.path, out) { transferred, _ ->
                                 throttle.report(transferred)
-                                this@withContext.isActive
                             }
                         }
                     } finally {
@@ -126,6 +125,7 @@ class SftpTransferManager @Inject constructor(
                     try {
                         val throttle = ProgressThrottle { bytes ->
                             updateTask(task.id) { t -> t.copy(transferredBytes = bytes) }
+                            this@withContext.isActive
                         }
                         val monitor = object : SftpProgressMonitor {
                             // Start from 0: JSch calls monitor.count(skip) once at the
@@ -136,8 +136,7 @@ class SftpTransferManager @Inject constructor(
                             override fun init(op: Int, src: String, dest: String, max: Long) {}
                             override fun count(bytes: Long): Boolean {
                                 transferred += bytes
-                                throttle.report(transferred)
-                                return this@withContext.isActive
+                                return throttle.report(transferred)
                             }
                             override fun end() {
                                 throttle.flush()
@@ -170,6 +169,7 @@ class SftpTransferManager @Inject constructor(
             inputStream.use { input ->
                 val throttle = ProgressThrottle { bytes ->
                     updateTask(task.id) { t -> t.copy(transferredBytes = bytes) }
+                    this@withContext.isActive
                 }
                 if (task.isSmb) {
                     val client = smbSessionManager.getClientForProfile(task.profileId)
@@ -190,8 +190,7 @@ class SftpTransferManager @Inject constructor(
                             override fun init(op: Int, src: String, dest: String, max: Long) {}
                             override fun count(bytes: Long): Boolean {
                                 transferred += bytes
-                                throttle.report(transferred)
-                                return this@withContext.isActive
+                                return throttle.report(transferred)
                             }
                             override fun end() {
                                 throttle.flush()
@@ -222,7 +221,7 @@ class SftpTransferManager @Inject constructor(
             val inputStream = context.contentResolver.openInputStream(sourceUri)
                 ?: throw IllegalStateException("Cannot open input stream")
             inputStream.use { input ->
-                val throttle = ProgressThrottle { onProgress(it) }
+                val throttle = ProgressThrottle { bytes -> onProgress(bytes) }
                 if (isSmb) {
                     val client = smbSessionManager.getClientForProfile(profileId)
                         ?: throw IllegalStateException("SMB not connected")
@@ -242,8 +241,7 @@ class SftpTransferManager @Inject constructor(
                             override fun init(op: Int, src: String, dest: String, max: Long) {}
                             override fun count(bytes: Long): Boolean {
                                 transferred += bytes
-                                throttle.report(transferred)
-                                return true
+                                return throttle.report(transferred)
                             }
                             override fun end() {
                                 throttle.flush()

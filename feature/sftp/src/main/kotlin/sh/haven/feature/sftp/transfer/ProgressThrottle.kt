@@ -11,6 +11,12 @@ import android.os.SystemClock
  * and re-posted the foreground notification. Emitting at a fixed low rate keeps
  * the progress bar responsive while removing the redundant work.
  *
+ * [report] returns whatever the last real emission returned, so callers that use
+ * the return value as a cancellation signal keep working: a `false` from [emit]
+ * is surfaced on the call that produced it and on every skipped call after it,
+ * until the next emission. At worst one extra packet is read before the transfer
+ * stops.
+ *
  * The final value is always emitted: [flush] must be called when the transfer
  * ends so the UI never stops short of 100%.
  *
@@ -19,30 +25,33 @@ import android.os.SystemClock
  */
 internal class ProgressThrottle(
     private val intervalMs: Long = DEFAULT_INTERVAL_MS,
-    private val emit: (Long) -> Unit,
+    private val emit: (Long) -> Boolean,
 ) {
     private var lastEmittedAt = 0L
     private var lastValue = 0L
     private var dirty = false
+    private var lastResult = true
 
     /** Report a new absolute byte count; emits only when [intervalMs] has elapsed. */
-    fun report(total: Long) {
+    fun report(total: Long): Boolean {
         lastValue = total
         dirty = true
         val now = SystemClock.elapsedRealtime()
         if (now - lastEmittedAt >= intervalMs) {
             lastEmittedAt = now
             dirty = false
-            emit(total)
+            lastResult = emit(total)
         }
+        return lastResult
     }
 
     /** Emit the latest value if anything is still pending. */
-    fun flush() {
+    fun flush(): Boolean {
         if (dirty) {
             dirty = false
-            emit(lastValue)
+            lastResult = emit(lastValue)
         }
+        return lastResult
     }
 
     companion object {
