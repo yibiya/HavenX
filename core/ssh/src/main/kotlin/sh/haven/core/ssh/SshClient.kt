@@ -44,6 +44,20 @@ class SshClient : Closeable {
         get() = session
 
     /**
+     * Seconds between keepalive probes. JSch sends an SSH_MSG_GLOBAL_REQUEST
+     * ("keepalive@openssh.com") and expects a reply; every probe is a wakeup on
+     * a mobile radio. 15 s (the previous hardcoded value) costs 4 radio wakeups a
+     * minute per session, which is significant on LTE/NR where the modem stays in
+     * a high-power state for several seconds after each packet.
+     *
+     * 60 s matches OpenSSH's own `ServerAliveInterval` default and still detects a
+     * dead peer within ~3 minutes (60 s x 3 misses) — well inside the window where
+     * TCP would notice on its own but far cheaper in idle power.
+     */
+    var keepAliveIntervalMs: Int = DEFAULT_KEEPALIVE_INTERVAL_MS
+    var keepAliveCountMax: Int = DEFAULT_KEEPALIVE_COUNT_MAX
+
+    /**
      * Connect to an SSH server using the given config.
      * This suspends on Dispatchers.IO.
      * Returns the host key as a [KnownHostEntry] for TOFU verification.
@@ -62,8 +76,8 @@ class SshClient : Closeable {
         sess.setConfig("StrictHostKeyChecking", "no")
         // Disable GSSAPI auth — it causes multi-second timeouts on most servers
         sess.setConfig("PreferredAuthentications", "publickey,keyboard-interactive,password")
-        sess.serverAliveInterval = 15_000
-        sess.serverAliveCountMax = 3
+        sess.serverAliveInterval = keepAliveIntervalMs
+        sess.serverAliveCountMax = keepAliveCountMax
 
         when (val auth = config.authMethod) {
             is ConnectionConfig.AuthMethod.Password -> {
@@ -183,8 +197,8 @@ class SshClient : Closeable {
         if (proxy != null) sess.setProxy(proxy)
         sess.setConfig("StrictHostKeyChecking", "no")
         sess.setConfig("PreferredAuthentications", "publickey,keyboard-interactive,password")
-        sess.serverAliveInterval = 15_000
-        sess.serverAliveCountMax = 3
+        sess.serverAliveInterval = keepAliveIntervalMs
+        sess.serverAliveCountMax = keepAliveCountMax
 
         when (val auth = config.authMethod) {
             is ConnectionConfig.AuthMethod.Password -> {
@@ -278,6 +292,12 @@ class SshClient : Closeable {
     override fun close() = disconnect()
 
     companion object {
+        /** Keepalive probe interval. See [keepAliveIntervalMs]. */
+        const val DEFAULT_KEEPALIVE_INTERVAL_MS = 60_000
+
+        /** Missed probes before JSch declares the link dead. */
+        const val DEFAULT_KEEPALIVE_COUNT_MAX = 3
+
         /**
          * Cache resolved hostnames → IP addresses across all SshClient instances.
          * Avoids repeated slow DNS lookups (especially for .local mDNS names on Android,

@@ -101,22 +101,32 @@ class SftpTransferManager @Inject constructor(
                     val client = smbSessionManager.getClientForProfile(task.profileId)
                         ?: throw IllegalStateException("SMB not connected")
                     var current = task.transferredBytes
-                    if (isAppend && current > 0) {
-                        client.downloadRange(entry.path, current, task.totalBytes - current, out) {
-                            current += it
-                            updateTask(task.id) { t -> t.copy(transferredBytes = current) }
-                            this@withContext.isActive
+                    val throttle = ProgressThrottle { bytes ->
+                        updateTask(task.id) { t -> t.copy(transferredBytes = bytes) }
+                    }
+                    try {
+                        if (isAppend && current > 0) {
+                            client.downloadRange(entry.path, current, task.totalBytes - current, out) {
+                                current += it
+                                throttle.report(current)
+                                this@withContext.isActive
+                            }
+                        } else {
+                            client.download(entry.path, out) { transferred, _ ->
+                                throttle.report(transferred)
+                                this@withContext.isActive
+                            }
                         }
-                    } else {
-                        client.download(entry.path, out) { transferred, _ ->
-                            updateTask(task.id) { t -> t.copy(transferredBytes = transferred) }
-                            this@withContext.isActive
-                        }
+                    } finally {
+                        throttle.flush()
                     }
                 } else {
                     val channel = openDedicatedSftpChannel(task.profileId)
                         ?: throw IllegalStateException("Not connected")
                     try {
+                        val throttle = ProgressThrottle { bytes ->
+                            updateTask(task.id) { t -> t.copy(transferredBytes = bytes) }
+                        }
                         val monitor = object : SftpProgressMonitor {
                             // Start from 0: JSch calls monitor.count(skip) once at the
                             // beginning of a RESUME transfer, which advances the counter
@@ -126,10 +136,12 @@ class SftpTransferManager @Inject constructor(
                             override fun init(op: Int, src: String, dest: String, max: Long) {}
                             override fun count(bytes: Long): Boolean {
                                 transferred += bytes
-                                updateTask(task.id) { t -> t.copy(transferredBytes = transferred) }
+                                throttle.report(transferred)
                                 return this@withContext.isActive
                             }
-                            override fun end() {}
+                            override fun end() {
+                                throttle.flush()
+                            }
                         }
                         if (isAppend) {
                             channel.get(entry.path, out, monitor, ChannelSftp.RESUME, task.transferredBytes)
@@ -156,12 +168,18 @@ class SftpTransferManager @Inject constructor(
             val inputStream = context.contentResolver.openInputStream(sourceUri)
                 ?: throw IllegalStateException("Cannot open input stream")
             inputStream.use { input ->
+                val throttle = ProgressThrottle { bytes ->
+                    updateTask(task.id) { t -> t.copy(transferredBytes = bytes) }
+                }
                 if (task.isSmb) {
                     val client = smbSessionManager.getClientForProfile(task.profileId)
                         ?: throw IllegalStateException("SMB not connected")
-                    client.upload(input, destPath, task.totalBytes) { transferred, _ ->
-                        updateTask(task.id) { t -> t.copy(transferredBytes = transferred) }
-                        this@withContext.isActive
+                    try {
+                        client.upload(input, destPath, task.totalBytes) { transferred, _ ->
+                            throttle.report(transferred)
+                        }
+                    } finally {
+                        throttle.flush()
                     }
                 } else {
                     val channel = openDedicatedSftpChannel(task.profileId)
@@ -172,10 +190,12 @@ class SftpTransferManager @Inject constructor(
                             override fun init(op: Int, src: String, dest: String, max: Long) {}
                             override fun count(bytes: Long): Boolean {
                                 transferred += bytes
-                                updateTask(task.id) { t -> t.copy(transferredBytes = transferred) }
+                                throttle.report(transferred)
                                 return this@withContext.isActive
                             }
-                            override fun end() {}
+                            override fun end() {
+                                throttle.flush()
+                            }
                         }
                         channel.put(input, destPath, monitor)
                     } finally {
@@ -202,11 +222,16 @@ class SftpTransferManager @Inject constructor(
             val inputStream = context.contentResolver.openInputStream(sourceUri)
                 ?: throw IllegalStateException("Cannot open input stream")
             inputStream.use { input ->
+                val throttle = ProgressThrottle { onProgress(it) }
                 if (isSmb) {
                     val client = smbSessionManager.getClientForProfile(profileId)
                         ?: throw IllegalStateException("SMB not connected")
-                    client.upload(input, destPath, totalBytes) { transferred, _ ->
-                        onProgress(transferred)
+                    try {
+                        client.upload(input, destPath, totalBytes) { transferred, _ ->
+                            throttle.report(transferred)
+                        }
+                    } finally {
+                        throttle.flush()
                     }
                 } else {
                     val channel = openDedicatedSftpChannel(profileId)
@@ -217,9 +242,12 @@ class SftpTransferManager @Inject constructor(
                             override fun init(op: Int, src: String, dest: String, max: Long) {}
                             override fun count(bytes: Long): Boolean {
                                 transferred += bytes
-                                return onProgress(transferred)
+                                throttle.report(transferred)
+                                return true
                             }
-                            override fun end() {}
+                            override fun end() {
+                                throttle.flush()
+                            }
                         }
                         channel.put(input, destPath, monitor)
                     } finally {

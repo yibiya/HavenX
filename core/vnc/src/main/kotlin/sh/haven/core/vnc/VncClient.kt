@@ -13,6 +13,9 @@ import java.net.Socket
 
 private const val TAG = "VncClient"
 
+/** Poll interval while paused; see startClientEventLoop. */
+private const val PAUSED_POLL_MS = 1_000L
+
 /**
  * VNC client that connects to a VNC server and delivers framebuffer updates
  * as Android Bitmaps. Ported from vernacular-vnc (MIT) with AWT replaced
@@ -153,7 +156,11 @@ class VncClient(private val config: VncConfig) : Closeable {
                 var incremental = false
                 while (running) {
                     if (paused) {
-                        Thread.sleep(200)
+                        // Paused means the surface is not consuming frames (app
+                        // backgrounded / PiP hidden). 200 ms still wakes the CPU
+                        // 5x a second for nothing; 1 s is imperceptible for a
+                        // resume and cuts those wakeups by 80%.
+                        Thread.sleep(PAUSED_POLL_MS)
                         continue
                     }
                     val interval = 1000L / config.targetFps
