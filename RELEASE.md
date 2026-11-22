@@ -9,7 +9,8 @@
 - Terminal swipes resolve relative to the gesture's starting page, preserving one-page navigation even after crossing the pager midpoint. Terminal selection, IME, fullscreen and connection handoffs retain their existing behavior.
 - Retained inactive terminal pages no longer register the Activity hardware-key interceptor or accept terminal input; background sessions/output remain alive.
 - Fork debug builds use `com.hension.havenx.glassdebug` for side-by-side UI previews; release and existing `.debug` installations and their data are not replaced.
-- Verify via GitHub Actions build/tests/lint and an Actions-built APK on phone, tablet and split-screen widths; check both languages/themes, all connection handoffs, terminal selection/keyboard controls, backup/restore and desktop fullscreen. No local verification was run for this change.
+- Verified implementation commit `6cc6f3f` through GitHub Actions Build and CI (APK, unit tests, lint). Actions-built `.glassdebug` preview exercised repeated six-page switching at actual 1080×2400/440dpi phone and 1600×2560/320dpi tablet viewports, plus light/dark glass and connection/theme dialogs. Restored emulator display overrides afterward; existing `.debug` and physical phone data were untouched.
+- Empty-session emulator frame samples do not establish a speedup: warmed phone baseline/fix p50/p90/p95 were both 6/8/9ms (jank 1.85%/1.88%); tablet baseline/fix p50/p90 were 5/7ms, p95 8/10ms. Live SSH output, selection, remote fullscreen and connection handoffs require real session credentials and were not runtime-verified. No local compilation/tests/lint were run.
 
 ## 1. Bump version
 
