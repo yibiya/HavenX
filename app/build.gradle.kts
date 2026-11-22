@@ -47,7 +47,7 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = ".debug"
+            applicationIdSuffix = ".glassdebug"
             versionNameSuffix = "-debug"
             manifestPlaceholders["appLabel"] = "@string/app_name_debug"
         }

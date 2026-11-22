@@ -6,6 +6,7 @@
 - Preserved the six-page pager and all connection handoffs while adding an automatic labeled tablet rail (600dp) and sidebar (1000dp). Fullscreen desktop sessions hide both phone and tablet chrome.
 - Grouped Settings into localized Security & Privacy, Terminal & Input, Appearance & Language, Backup & Restore, and About & Updates sections. Wide windows use bounded two-column Settings content from 840dp.
 - Terminal rendering, text selection, hardware keyboard routing and IME handling are unchanged.
+- Fork debug builds use `com.hension.havenx.glassdebug` for side-by-side UI previews; release and existing `.debug` installations and their data are not replaced.
 - Verify via GitHub Actions build/tests/lint and an Actions-built APK on phone, tablet and split-screen widths; check both languages/themes, all connection handoffs, terminal selection/keyboard controls, backup/restore and desktop fullscreen. No local verification was run for this change.
 
 ## 1. Bump version
